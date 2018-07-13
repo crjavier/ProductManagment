@@ -25,8 +25,9 @@ router.get('/', (req, res) => {
 router.put('/:id', (req, res) => {
   Product.findById(req.params.id, (err, product) => {
     product.name = req.body.name;
-    product.save((err, updatedProduct) => (
-      res.status(200).json(updatedProduct)
+    product.save((errSave, updatedProduct) => (
+      errSave ? res.status(400).json(err) :
+        res.status(200).json(updatedProduct)
     ));
   });
 });

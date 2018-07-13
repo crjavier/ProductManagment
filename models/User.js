@@ -30,20 +30,40 @@ const userSchema = new mongoose.Schema({
   },
 });
 
-userSchema.statics.validateBody = function validateBody(requestBody) {
-  const requiredFields = 'name email password user_type'.split(' ');
+
+userSchema.statics.validateBody = function validateBody(body) {
+  const requiredFields = 'name email password password_confirmation user_type'.split(' ');
+  const regExpEmail = new RegExp('[^@]+@[^@]+.[^@]+');
+  // const regExpEmail = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 
   const errors = requiredFields.reduce((acc, requiredField) => (
-    (!requestBody[requiredField] && acc.concat([{
+    (!body[requiredField] && acc.concat([{
       code: 'MissingField',
       description: `Missing field ${requiredField}`,
     }])) || acc
   ), []);
 
-  if (requestBody.password && requestBody.password.length <= 6) {
+  // should be a valid email
+  if (body.email && !regExpEmail.test(body.email)) {
+    errors.push({
+      code: 'InvalidEmail',
+      description: 'Email entered is not valid.',
+    });
+  }
+
+  // validate password should be in the body and have to be plus long 6
+  if (body.password && body.password.length <= 6) {
     errors.push({
       code: 'InvalidPassword',
-      description: 'Password mst be at least 6 characters.',
+      description: 'Password must be at least 6 characters.',
+    });
+  }
+
+  // password must match the password confirmation
+  if (body.password && body.password_confirmation && body.password !== body.password_confirmation) {
+    errors.push({
+      code: 'InvalidConfirmationPassword',
+      description: 'Password must match the confirmation.',
     });
   }
 
@@ -51,7 +71,7 @@ userSchema.statics.validateBody = function validateBody(requestBody) {
     error: errors,
   }) :
 
-    this.findOne({ email: requestBody.email })
+    this.findOne({ email: body.email })
 
       .then(user => (
         user ? Promise.reject({
@@ -59,7 +79,7 @@ userSchema.statics.validateBody = function validateBody(requestBody) {
             code: 'UserAlreadyExists',
             description: 'Email is already registered.',
           }],
-        }) : Promise.resolve(requestBody)
+        }) : Promise.resolve(body)
       ));
 };
 
